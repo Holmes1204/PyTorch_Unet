@@ -9,14 +9,15 @@ from PIL import Image
 
 
 class BasicDataset(Dataset):
-    def __init__(self, imgs_dir, masks_dir, scale=1, mask_suffix=''):
-        self.imgs_dir = imgs_dir
-        self.masks_dir = masks_dir
+    def __init__(self, train_dir, scale=1):
+        # self.imgs_dir = imgs_dir
+        # self.masks_dir = masks_dir
+        self.train_dir=train_dir
         self.scale = scale
-        self.mask_suffix = mask_suffix
+        # self.mask_suffix = mask_suffix
         assert 0 < scale <= 1, 'Scale must be between 0 and 1'
 
-        self.ids = [splitext(file)[0] for file in listdir(imgs_dir)
+        self.ids = [splitext(file)[0] for file in listdir(train_dir)
                     if not file.startswith('.')]
         logging.info(f'Creating dataset with {len(self.ids)} examples')
 
@@ -44,16 +45,21 @@ class BasicDataset(Dataset):
 
     def __getitem__(self, i):
         idx = self.ids[i]
-        mask_file = glob(self.masks_dir + idx + self.mask_suffix + '.*')
-        img_file = glob(self.imgs_dir + idx + '.*')
+        #'.*' means whatever type of image
+        mask_file = glob(self.train_dir +'/'+ idx +'/'+'label' + '.*')
+        img_file  = glob(self.train_dir +'/'+ idx +'/'+'img'+ '.*')
 
         assert len(mask_file) == 1, \
             f'Either no mask or multiple masks found for the ID {idx}: {mask_file}'
         assert len(img_file) == 1, \
             f'Either no image or multiple images found for the ID {idx}: {img_file}'
-        mask = Image.open(mask_file[0])
+        mask = Image.open(mask_file[0]).convert('L')
+        pixels = mask.load()
+        for x in range(mask.width):
+            for y in range(mask.height):
+                pixels[x, y] = 255 if pixels[x, y] > 0 else 0
         img = Image.open(img_file[0])
-
+        
         assert img.size == mask.size, \
             f'Image and mask {idx} should be the same size, but are {img.size} and {mask.size}'
 
